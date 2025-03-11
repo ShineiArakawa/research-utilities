@@ -1,14 +1,69 @@
 import pathlib
-import typing
 
 import numpy as np
-import torch
 
-T = typing.TypeVar('T', np.ndarray, torch.Tensor)
+
+def plot_signal(
+    signal: np.ndarray,
+    file_path: str,
+    title: str | None = None,
+    label: str | None = None,
+    x_label: str = 'Time',
+    y_label: str = 'Amplitude',
+    grid_alpha: float = 0.3
+) -> None:
+    """
+    Plot a signal.
+
+    Parameters
+    ----------
+    signal : np.ndarray
+        The input signal (shape: [n_points,]).
+    file_path : str
+        The file path to save the plot.
+    title : str, optional
+        The title of the plot.
+    label : str, optional
+        The label of the plot.
+    x_label : str, optional
+        The x-axis label.
+    y_label : str, optional
+        The y-axis label.
+    grid_alpha : float, optional
+        The transparency of the grid.
+    """
+
+    # Plot the signal
+    import matplotlib.pyplot as plt
+    fig = plt.figure(dpi=300)
+    ax = fig.add_subplot(111)
+
+    ax.plot(signal, label=label)
+
+    if title is not None:
+        ax.set_title(title)
+
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+
+    if label is not None:
+        ax.legend()
+
+    ax.grid(alpha=grid_alpha)
+
+    path = pathlib.Path(file_path).resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    plt.tight_layout()
+    fig.savefig(path)
+
+    plt.close(fig)
+    plt.clf()
+    del fig
 
 
 def fft_1d(
-    signal: T,
+    signal: np.ndarray,
     sampling_rate: float | None = None,
     dt: float | None = None,
     is_db_scale: bool = False,
@@ -18,13 +73,13 @@ def fft_1d(
     x_label: str = 'Frequency [Hz]',
     y_label: str = 'Amplitude',
     grid_alpha: float = 0.3
-) -> tuple[T, T]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Compute the 1D Fast Fourier Transform of a signal.
 
     Parameters
     ----------
-    signal : np.ndarray or torch.Tensor
+    signal : np.ndarray
         The input signal (shape: [n_points,]).
     sampling_rate : float, optional
         The sampling rate of the signal.
@@ -72,7 +127,7 @@ def fft_1d(
     if file_path is not None:
         # Plot the FFT
         import matplotlib.pyplot as plt
-        fig = plt.figure()
+        fig = plt.figure(dpi=300)
         ax = fig.add_subplot(111)
 
         ax.plot(
@@ -92,9 +147,11 @@ def fft_1d(
 
         ax.grid(alpha=grid_alpha)
 
-        file_path = pathlib.Path(file_path).resolve()
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(file_path)
+        path = pathlib.Path(file_path).resolve()
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        plt.tight_layout()
+        fig.savefig(path)
 
         plt.close(fig)
         plt.clf()
