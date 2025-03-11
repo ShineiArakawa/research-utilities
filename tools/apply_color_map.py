@@ -1,5 +1,8 @@
+import random
+
 import cv2
 import matplotlib as mpl
+import matplotlib.colors as mplib_colors
 import numpy as np
 
 
@@ -56,3 +59,35 @@ def apply_color_map(img: np.ndarray, color_map_type: str) -> np.ndarray:
         colorred = cv2.applyColorMap(img, color_map)
 
     return colorred
+
+
+class CyclicColorIterator(object):
+    """Cyclic color iterator
+    """
+
+    def __init__(self, is_massive: bool) -> None:
+        """Initialize the iterator
+
+        Parameters
+        ----------
+        is_massive : bool
+            Use larger color set
+        """
+
+        self._base_colors = mplib_colors.XKCD_COLORS if is_massive else mplib_colors.CSS4_COLORS
+        self._keys = list(self._base_colors.keys())
+        self._counter = 0
+
+        random.shuffle(self._keys)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        self._counter += 1
+
+        if self._counter >= len(self._keys):
+            self._counter = 0
+            pass
+
+        return self._base_colors[self._keys[self._counter]]
