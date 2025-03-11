@@ -1,9 +1,12 @@
+import logging
 import random
 
 import cv2
 import matplotlib as mpl
 import matplotlib.colors as mplib_colors
 import numpy as np
+
+_logger = logging.getLogger(__name__)
 
 
 def apply_color_map(img: np.ndarray, color_map_type: str) -> np.ndarray:
@@ -24,11 +27,17 @@ def apply_color_map(img: np.ndarray, color_map_type: str) -> np.ndarray:
         The colorized image. The output image is in BGR format.
     """
 
+    _logger.debug(f'img.shape: {img.shape}, img.dtype: {img.dtype}, color_map_type: {color_map_type}')
+
+    assert img.ndim == 2
+
     colorred: np.ndarray = None
 
     orig_dtype = img.dtype
     orig_min: float = img.min()
     orig_max: float = img.max()
+
+    _logger.debug(f'orig_min: {orig_min}, orig_max: {orig_max}')
 
     if color_map_type in mpl.colormaps:
         # NOTE: use matplotlib colormap
@@ -40,14 +49,12 @@ def apply_color_map(img: np.ndarray, color_map_type: str) -> np.ndarray:
         img_scaled = (img.astype(np.float32) - orig_min) / (orig_max - orig_min)
 
         # Apply the colormap
-        colorred = color_map(img_scaled)
+        colorred = color_map(img_scaled)  # colorred is in HWC format
+        _logger.debug(f'colorred.shape: {colorred.shape}, colorred.dtype: {colorred.dtype}')
 
         # Convert the image to the original dtype and scale
         colorred = (colorred * (orig_max - orig_min) + orig_min).astype(orig_dtype)
-
-        # squeeze
-        if colorred.shape[-2] == 1:
-            colorred = colorred.squeeze(-2)
+        _logger.debug(f'colorred.shape: {colorred.shape}, colorred.dtype: {colorred.dtype}')
 
         colorred = cv2.cvtColor(colorred, cv2.COLOR_RGB2BGR)
     else:

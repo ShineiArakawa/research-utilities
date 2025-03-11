@@ -1,6 +1,13 @@
+import logging
 import pathlib
 
+import cv2
+import matplotlib.pyplot as plt
 import numpy as np
+
+import research_utilities.apply_color_map as _cm
+
+_logger = logging.getLogger(__name__)
 
 
 def plot_signal(
@@ -34,7 +41,6 @@ def plot_signal(
     """
 
     # Plot the signal
-    import matplotlib.pyplot as plt
     fig = plt.figure(dpi=300)
     ax = fig.add_subplot(111)
 
@@ -126,7 +132,6 @@ def fft_1d(
 
     if file_path is not None:
         # Plot the FFT
-        import matplotlib.pyplot as plt
         fig = plt.figure(dpi=300)
         ax = fig.add_subplot(111)
 
@@ -158,3 +163,68 @@ def fft_1d(
         del fig
 
     return freq, amp
+
+
+def fft_2d(
+    img: np.ndarray,
+    file_path: str | None = None,
+    color_map_type: str = 'viridis'
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Compute the 2D Fast Fourier Transform of an image.
+
+    Parameters
+    ----------
+    img : np.ndarray
+        The input image (shape: [height, width]).
+    file_path : str, optional
+        The file path to save the plot.
+    color_map_type : str, optional
+        The color map to be applied to the plot.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        The 2D FFT and the magnitude spectrum of the image.
+    """
+
+    _logger.debug(f'img.shape: {img.shape}')
+
+    assert img.ndim >= 2
+    assert file_path is None or (img.ndim == 2 or (img.ndim == 3 and img.shape[0] == 1))
+
+    # Compute the 2D FFT
+    fft_img = np.fft.fft2(img)
+    _logger.debug(f'fft_img.shape: {fft_img.shape}')
+
+    fft_img_shifted = np.fft.fftshift(fft_img)
+    _logger.debug(f'fft_img_shifted.shape: {fft_img_shifted.shape}')
+
+    mag_spectrum = 20.0 * np.log10(np.abs(fft_img_shifted) + 1e-9)
+    _logger.debug(f'mag_spectrum.shape: {mag_spectrum.shape}')
+
+    if file_path is not None:
+        path = pathlib.Path(file_path).resolve()
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        mag_spectrum = mag_spectrum.astype(np.float32)
+
+        img = _cm.apply_color_map(
+            img=mag_spectrum,
+            color_map_type=color_map_type
+        )  # img is returned in BGR format and float32 dtype
+
+        # To [0, 1]
+        min_val = img.min()
+        max_val = img.max()
+
+        _logger.debug(f'min_val: {min_val}, max_val: {max_val}')
+
+        img = (img - min_val) / (max_val - min_val)
+
+        # To [0, 255] and uint8
+        img = (img * 255).astype(np.uint8)
+
+        cv2.imwrite(file_path, img)
+
+    return fft_img, mag_spectrum
