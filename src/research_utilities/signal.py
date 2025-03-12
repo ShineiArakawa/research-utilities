@@ -17,6 +17,10 @@ def plot_signal(
     label: str | None = None,
     x_label: str = 'Time',
     y_label: str = 'Amplitude',
+    x_min: float | None = None,
+    x_max: float | None = None,
+    y_min: float | None = None,
+    y_max: float | None = None,
     grid_alpha: float = 0.3,
     dpi: int = 200
 ) -> None:
@@ -37,6 +41,14 @@ def plot_signal(
         The x-axis label.
     y_label : str, optional
         The y-axis label.
+    x_min : float, optional
+        The minimum value of the x-axis.
+    x_max : float, optional
+        The maximum value of the x-axis.
+    y_min : float, optional
+        The minimum value of the y-axis.
+    y_max : float, optional
+        The maximum value of the y-axis.
     grid_alpha : float, optional
         The transparency of the grid.
     dpi : int, optional
@@ -54,6 +66,9 @@ def plot_signal(
 
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
+
+    ax.set_xlim(left=x_min, right=x_max)
+    ax.set_ylim(bottom=y_min, top=y_max)
 
     if label is not None:
         ax.legend()
@@ -81,6 +96,10 @@ def fft_1d(
     label: str | None = None,
     x_label: str = 'Frequency [Hz]',
     y_label: str = 'Amplitude',
+    x_min: float | None = None,
+    x_max: float | None = None,
+    y_min: float | None = None,
+    y_max: float | None = None,
     grid_alpha: float = 0.3,
     dpi: int = 200
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -108,6 +127,14 @@ def fft_1d(
         The x-axis label.
     y_label : str, optional
         The y-axis label.
+    x_min : float, optional
+        The minimum value of the x-axis.
+    x_max : float, optional
+        The maximum value of the x-axis.
+    y_min : float, optional
+        The minimum value of the y-axis.
+    y_max : float, optional
+        The maximum value of the y-axis.
     grid_alpha : float, optional
         The transparency of the grid.
     dpi : int, optional
@@ -152,6 +179,9 @@ def fft_1d(
 
         ax.set_xlabel(x_label)
         ax.set_ylabel(f'{y_label} [dB]' if is_db_scale else y_label)
+
+        ax.set_xlim(left=x_min, right=x_max)
+        ax.set_ylim(bottom=y_min, top=y_max)
 
         if label is not None:
             ax.legend()
