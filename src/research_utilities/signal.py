@@ -17,7 +17,8 @@ def plot_signal(
     label: str | None = None,
     x_label: str = 'Time',
     y_label: str = 'Amplitude',
-    grid_alpha: float = 0.3
+    grid_alpha: float = 0.3,
+    dpi: int = 200
 ) -> None:
     """
     Plot a signal.
@@ -38,10 +39,12 @@ def plot_signal(
         The y-axis label.
     grid_alpha : float, optional
         The transparency of the grid.
+    dpi : int, optional
+        The resolution of the plot.
     """
 
     # Plot the signal
-    fig = plt.figure(dpi=300)
+    fig = plt.figure(dpi=200)
     ax = fig.add_subplot(111)
 
     ax.plot(signal, label=label)
@@ -78,7 +81,8 @@ def fft_1d(
     label: str | None = None,
     x_label: str = 'Frequency [Hz]',
     y_label: str = 'Amplitude',
-    grid_alpha: float = 0.3
+    grid_alpha: float = 0.3,
+    dpi: int = 200
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Compute the 1D Fast Fourier Transform of a signal.
@@ -106,6 +110,8 @@ def fft_1d(
         The y-axis label.
     grid_alpha : float, optional
         The transparency of the grid.
+    dpi : int, optional
+        The resolution of the plot.
 
     Returns
     -------
@@ -132,7 +138,7 @@ def fft_1d(
 
     if file_path is not None:
         # Plot the FFT
-        fig = plt.figure(dpi=300)
+        fig = plt.figure(dpi=dpi)
         ax = fig.add_subplot(111)
 
         ax.plot(
