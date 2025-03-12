@@ -56,7 +56,7 @@ def plot_signal(
     """
 
     # Plot the signal
-    fig = plt.figure(dpi=200)
+    fig = plt.figure(dpi=dpi)
     ax = fig.add_subplot(111)
 
     ax.plot(signal, label=label)
