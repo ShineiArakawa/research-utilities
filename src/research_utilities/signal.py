@@ -264,3 +264,21 @@ def fft_2d(
         cv2.imwrite(file_path, img)
 
     return fft_img, mag_spectrum
+
+
+# def calc_rapds(
+#     img: np.ndarray
+# ):
+#     """
+#     Calculate the Radial Average Power Density Spectrum (RAPDS) of an image.
+
+#     Parameters
+#     ----------
+#     img : np.ndarray
+#         The input image (shape: [height, width]).
+
+#     Returns
+#     -------
+#     np.ndarray
+#         The RAPDS of the image.
+#     """
