@@ -2,21 +2,20 @@ import logging
 
 import cv2
 import torch
-from matplotlib import pyplot as plt
 
 import research_utilities.resampling as _resampling
 import research_utilities.signal as _signal
 
 
-def test_fft_2d(lenna: str, logger: logging.Logger) -> None:
-    img = cv2.imread(lenna, cv2.IMREAD_GRAYSCALE)
+def test_fft_2d(test_image: str, logger: logging.Logger) -> None:
+    img = cv2.imread(test_image, cv2.IMREAD_GRAYSCALE)
     logger.debug(f'img.shape: {img.shape}')
 
     _signal.fft_2d(img, 'fft.png')
 
 
-def test_bilinear_interp(lenna: str, logger: logging.Logger) -> None:
-    img = cv2.imread(lenna, cv2.IMREAD_GRAYSCALE)
+def test_bilinear_interp(test_image: str, logger: logging.Logger) -> None:
+    img = cv2.imread(test_image, cv2.IMREAD_GRAYSCALE)
     logger.debug(f'img.shape: {img.shape}')
 
     img = torch.from_numpy(img).to(torch.float32).cuda()

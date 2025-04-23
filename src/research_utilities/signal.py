@@ -10,6 +10,13 @@ import research_utilities.apply_color_map as _cm
 import research_utilities.common as _common
 import research_utilities.torch_util as _torch_util
 
+__all__ = [
+    'plot_signal',
+    'fft_1d',
+    'fft_2d',
+    'calc_radial_psd_profile',
+]
+
 _logger = _common.get_logger()
 
 
@@ -387,6 +394,6 @@ def calc_radial_psd_profile(
     )
 
     # Convert back to channels first format
-    radial_profile = radial_profile.permute(0, 3, 1, 2)  # [batch, channel, height, width]
+    radial_profile = radial_profile.permute(0, 3, 1, 2)  # [batch, channel, n_divs, n_points]
 
     return radial_profile
