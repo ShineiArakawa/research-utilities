@@ -53,6 +53,7 @@ def launch_multi_process(
     ```
 
     """
+
     n_processes = n_processes or os.cpu_count()
 
     with mp.get_context(context).Pool(processes=n_processes) as pool:

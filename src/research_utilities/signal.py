@@ -1,13 +1,33 @@
-import logging
+import functools
 import pathlib
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 
 import research_utilities.apply_color_map as _cm
+import research_utilities.common as _common
+import research_utilities.torch_util as _torch_util
 
-_logger = logging.getLogger(__name__)
+_logger = _common.get_logger()
+
+
+@functools.lru_cache(maxsize=None)
+def _get_cpp_module():
+    ext_loader = _torch_util.get_extension_loader()
+
+    module = ext_loader.load(
+        name='signal',
+        sources=[
+            'signal.cpp',
+            'signal.cu',
+            'resampling.cu',
+        ],
+        debug=_common.GlobalSettings.DEBUG_MODE
+    )
+
+    return module
 
 
 def plot_signal(
@@ -201,6 +221,53 @@ def fft_1d(
     return freq, amp
 
 
+def _fft_2d(
+    img: np.ndarray | torch.Tensor,
+) -> tuple[np.ndarray | torch.Tensor, np.ndarray | torch.Tensor, np.ndarray | torch.Tensor]:
+    if isinstance(img, np.ndarray):
+        return _fft_2d_np(img)
+    elif isinstance(img, torch.Tensor):
+        return _fft_2d_torch(img)
+    else:
+        raise TypeError(f'Unsupported type: {type(img)}')
+
+
+def _fft_2d_np(
+    img: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    fft_img = np.fft.fft2(img)
+    _logger.debug(f'fft_img.shape: {fft_img.shape}')
+
+    fft_img_shifted = np.fft.fftshift(fft_img)
+    _logger.debug(f'fft_img_shifted.shape: {fft_img_shifted.shape}')
+
+    mag_spectrum = np.abs(fft_img_shifted)
+    _logger.debug(f'mag_spectrum.shape: {mag_spectrum.shape}')
+
+    mag_power_spectrum = np.abs(fft_img_shifted) ** 2
+    _logger.debug(f'mag_power_spectrum.shape: {mag_power_spectrum.shape}')
+
+    return fft_img, mag_spectrum, mag_power_spectrum
+
+
+def _fft_2d_torch(
+    img: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    fft_img = torch.fft.fft2(img)
+    _logger.debug(f'fft_img.shape: {fft_img.shape}')
+
+    fft_img_shifted = torch.fft.fftshift(fft_img)
+    _logger.debug(f'fft_img_shifted.shape: {fft_img_shifted.shape}')
+
+    mag_spectrum = torch.abs(fft_img_shifted)
+    _logger.debug(f'mag_spectrum.shape: {mag_spectrum.shape}')
+
+    mag_power_spectrum = torch.abs(fft_img_shifted) ** 2
+    _logger.debug(f'mag_power_spectrum.shape: {mag_power_spectrum.shape}')
+
+    return fft_img, mag_spectrum, mag_power_spectrum
+
+
 def fft_2d(
     img: np.ndarray,
     file_path: str | None = None,
@@ -230,14 +297,8 @@ def fft_2d(
     assert file_path is None or (img.ndim == 2 or (img.ndim == 3 and img.shape[0] == 1))
 
     # Compute the 2D FFT
-    fft_img = np.fft.fft2(img)
-    _logger.debug(f'fft_img.shape: {fft_img.shape}')
-
-    fft_img_shifted = np.fft.fftshift(fft_img)
-    _logger.debug(f'fft_img_shifted.shape: {fft_img_shifted.shape}')
-
-    mag_spectrum = 20.0 * np.log10(np.abs(fft_img_shifted) + 1e-9)
-    _logger.debug(f'mag_spectrum.shape: {mag_spectrum.shape}')
+    fft_img, mag_spectrum, _ = _fft_2d(img)
+    mag_spectrum = 20.0 * np.log10(mag_spectrum + 1e-10)
 
     if file_path is not None:
         path = pathlib.Path(file_path).resolve()
@@ -266,19 +327,66 @@ def fft_2d(
     return fft_img, mag_spectrum
 
 
-# def calc_rapds(
-#     img: np.ndarray
-# ):
-#     """
-#     Calculate the Radial Average Power Density Spectrum (RAPDS) of an image.
+def calc_radial_psd_profile(
+    img: torch.Tensor,
+    n_divs: int = 180,
+    n_points: int = 512,
+) -> torch.Tensor:
+    """
 
-#     Parameters
-#     ----------
-#     img : np.ndarray
-#         The input image (shape: [height, width]).
+    Parameters
+    ----------
+    img : torch.Tensor
+        _description_
+    n_divs : int, optional
+        _description_, by default 180
+    n_points : int, optional
+        _description_, by default 512
 
-#     Returns
-#     -------
-#     np.ndarray
-#         The RAPDS of the image.
-#     """
+    Returns
+    -------
+    torch.Tensor
+        _description_
+
+    Raises
+    ------
+    ValueError
+        _description_
+    """
+
+    assert isinstance(img, torch.Tensor), 'The input image must be a torch.Tensor.'
+    assert img.is_cuda, 'The input image must be on the GPU.'
+
+    # Check the input
+    if img.ndim == 2:
+        # Add the batch and channel dimensions
+        img = img.unsqueeze(0).unsqueeze(0)
+    elif img.ndim == 3:
+        # Add the batch dimension
+        img = img.unsqueeze(0)
+    elif img.ndim != 4:
+        raise ValueError(f'Input image must have 2, 3, or 4 dimensions, but got {img.ndim}.')
+
+    dir_path = pathlib.Path('debug').resolve()
+    dir_path.mkdir(parents=True, exist_ok=True)
+
+    # Apply FFT
+    _, _, power_spectrum = _fft_2d_torch(img)  # [batch, channel, height, width]
+    psd = power_spectrum / (power_spectrum.shape[2] * power_spectrum.shape[3])  # Normalize by the number of pixels
+
+    # Convert to channels last format
+    psd = psd.permute(0, 2, 3, 1).contiguous()  # [batch, height, width, channel]
+
+    # Compute the power spectral density
+    _module = _get_cpp_module()
+
+    radial_profile = _module.calc_radial_psd_profile(
+        psd,
+        n_divs,
+        n_points
+    )
+
+    # Convert back to channels first format
+    radial_profile = radial_profile.permute(0, 3, 1, 2)  # [batch, channel, height, width]
+
+    return radial_profile

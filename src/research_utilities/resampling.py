@@ -1,13 +1,14 @@
 import enum
+import functools
 
 import numpy as np
 import torch
 
+import research_utilities.common as _common
 import research_utilities.torch_util as _torch_util
 
-DEBUG_MODE = False
 
-
+@functools.lru_cache(maxsize=None)
 def _get_cpp_module():
     ext_loader = _torch_util.get_extension_loader()
 
@@ -17,7 +18,7 @@ def _get_cpp_module():
             'resampling.cpp',
             'resampling.cu',
         ],
-        debug=DEBUG_MODE
+        debug=_common.GlobalSettings.DEBUG_MODE
     )
 
     return module

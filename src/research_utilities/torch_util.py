@@ -4,6 +4,7 @@ import logging
 import os
 import pathlib
 import platform
+import shutil
 import sys
 import typing
 
@@ -40,6 +41,15 @@ class ExtensionLoader:
             str_cuda_arch = f'{compute_capability[0]}.{compute_capability[1]}'
             self._logger.info(f'Using CUDA architecture: {str_cuda_arch}')
             os.environ['TORCH_CUDA_ARCH_LIST'] = str_cuda_arch
+
+    def _check_command(self, command: str) -> bool:
+        """
+        Check if a command is available in the system PATH.
+        """
+        if shutil.which(command) is None:
+            self._logger.warning(f'Command \'{command}\' not found in PATH.')
+            return False
+        return True
 
     def load(
         self,

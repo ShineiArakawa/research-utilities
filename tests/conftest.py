@@ -1,4 +1,5 @@
 import logging
+import pathlib
 import tempfile
 
 import pytest
@@ -19,6 +20,12 @@ def lenna():
     with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as f:
         f.write(url_data)
         yield f.name
+
+
+@pytest.fixture(scope='module')
+def checkerboard_img():
+    file_path = pathlib.Path(__file__).parent / 'assets' / 'checkerboard.png'
+    return str(file_path.resolve())
 
 
 @pytest.fixture(scope='module')

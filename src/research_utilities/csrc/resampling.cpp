@@ -1,15 +1,7 @@
 #include <torch/extension.h>
 
+#include <common.hpp>
 #include <resampling.cuh>
-
-// ----------------------------------------------------------------------------
-// C++ interface
-// ----------------------------------------------------------------------------
-#define CHECK_CUDA(x) TORCH_INTERNAL_ASSERT(x.get_device() > -1, #x " must be a CUDA tensor")
-#define CHECK_CONTIGUOUS(x) TORCH_INTERNAL_ASSERT(x.is_contiguous(), #x " must be contiguous")
-#define CHECK_INPUT(x) \
-  CHECK_CUDA(x);       \
-  CHECK_CONTIGUOUS(x)
 
 // ----------------------------------------------------------------------------
 // PyTorch interface

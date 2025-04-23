@@ -1,45 +1,31 @@
 #pragma once
 
-#include <cuda_runtime.h>
-#include <torch/extension.h>
+#include <cuda_common.cuh>
 
-#define THREADS_X 16
-#define THREADS_Y 16
-
-// Utility function to check for errors in CUDA calls
-#define CUDA_CHECK_ERRORS(ans)             \
-  {                                        \
-    gpu_assert((ans), __FILE__, __LINE__); \
-  }
-
-inline void gpu_assert(cudaError_t code, const char* file, int line, bool abort = true) {
-  if (code != cudaSuccess) {
-    std::cerr << ("GPUassert: : " + std::string(cudaGetErrorString(code)) + " " + std::string(file) + " " + std::to_string(line));
-    if (abort) {
-      exit(code);
-    }
-  }
-};
-
-inline int div_round_up(int x, int y) {
-  return (x + y - 1) / y;
-};
-
-inline void clip_image(
+void clip_image(
     const at::Tensor& input,  // [batch_size, input_height, input_width, num_channels]
     at::Tensor& output        // [batch_size, output_height, output_width, num_channels]
-) {
-  // Clip
-  const auto [min, argmin] = torch::min(input.flatten(1, -1), -1, true);            // [batch_size, 1]
-  const auto [max, argmax] = torch::max(input.flatten(1, -1), -1, true);            // [batch_size, 1]
-  output.clamp_(min.unsqueeze(-1).unsqueeze(-1), max.unsqueeze(-1).unsqueeze(-1));  // [batch_size, output_height, output_width, num_channels]
-};
+);
 
 // ---------------------------------------------------------------------------------------------------------
 // CUDA kernels
 // ---------------------------------------------------------------------------------------------------------
 
 #if defined(__CUDACC__)
+template <typename scalar_t>
+static __device__ __forceinline__ int4 get_neighbor_pixel_ids(
+    const scalar_t u,
+    const scalar_t v,
+    const int input_width,
+    const int input_height) {
+  const int x_idx_low = floor(u * static_cast<scalar_t>(input_width) - 0.5);   // [-1, input_width - 1]
+  const int y_idx_low = floor(v * static_cast<scalar_t>(input_height) - 0.5);  // [-1, input_height - 1]
+  const int x_idx_high = x_idx_low + 1;                                        // [0, input_width]
+  const int y_idx_high = y_idx_low + 1;                                        // [0, input_height]
+
+  return make_int4(x_idx_low, y_idx_low, x_idx_high, y_idx_high);
+}
+
 template <typename scalar_t>
 __global__ void nearest_interp_kernel(
     const torch::PackedTensorAccessor32<scalar_t, 4, torch::RestrictPtrTraits> input,  // (batch_size, input_height, input_width, num_channels)

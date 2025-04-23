@@ -1,4 +1,3 @@
-import logging
 import random
 
 import cv2
@@ -6,7 +5,9 @@ import matplotlib as mpl
 import matplotlib.colors as mplib_colors
 import numpy as np
 
-_logger = logging.getLogger(__name__)
+import research_utilities.common as _common
+
+_logger = _common.get_logger()
 
 
 def apply_color_map(img: np.ndarray, color_map_type: str) -> np.ndarray:

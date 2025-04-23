@@ -1,23 +1,19 @@
 #include <cuda_math.cuh>
 #include <resampling.cuh>
 
+void clip_image(
+    const at::Tensor& input,  // [batch_size, input_height, input_width, num_channels]
+    at::Tensor& output        // [batch_size, output_height, output_width, num_channels]
+) {
+  // Clip
+  const auto [min, argmin] = torch::min(input.flatten(1, -1), -1, true);            // [batch_size, 1]
+  const auto [max, argmax] = torch::max(input.flatten(1, -1), -1, true);            // [batch_size, 1]
+  output.clamp_(min.unsqueeze(-1).unsqueeze(-1), max.unsqueeze(-1).unsqueeze(-1));  // [batch_size, output_height, output_width, num_channels]
+};
+
 // ---------------------------------------------------------------------------------------------------------
 // CUDA kernels
 // ---------------------------------------------------------------------------------------------------------
-
-template <typename scalar_t>
-__device__ __forceinline__ int4 get_neighbor_pixel_ids(
-    const scalar_t u,
-    const scalar_t v,
-    const int input_width,
-    const int input_height) {
-  const int x_idx_low = floor(u * static_cast<scalar_t>(input_width) - 0.5);   // [-1, input_width - 1]
-  const int y_idx_low = floor(v * static_cast<scalar_t>(input_height) - 0.5);  // [-1, input_height - 1]
-  const int x_idx_high = x_idx_low + 1;                                        // [0, input_width]
-  const int y_idx_high = y_idx_low + 1;                                        // [0, input_height]
-
-  return make_int4(x_idx_low, y_idx_low, x_idx_high, y_idx_high);
-}
 
 template <typename scalar_t>
 __device__ __forceinline__ scalar_t sinc(const scalar_t x, const scalar_t a) {
@@ -84,8 +80,11 @@ __global__ void nearest_interp_kernel(
     const scalar_t u = grid[batch_idx][y][x][0];  // width
     const scalar_t v = grid[batch_idx][y][x][1];  // height
 
-    const int x_idx = static_cast<int>(u * static_cast<scalar_t>(input_width - 1));   // [0, input_width - 1]
-    const int y_idx = static_cast<int>(v * static_cast<scalar_t>(input_height - 1));  // [0, input_height - 1]
+    const scalar_t u_norm = u * (1.0 - dx) + 0.5 * dx;  // [1 / dx, 1 - 1 / dx]
+    const scalar_t v_norm = v * (1.0 - dy) + 0.5 * dy;  // [1 / dy, 1 - 1 / dy]
+
+    const int x_idx = static_cast<int>(u_norm * static_cast<scalar_t>(input_width - 1));   // [0, input_width - 1]
+    const int y_idx = static_cast<int>(v_norm * static_cast<scalar_t>(input_height - 1));  // [0, input_height - 1]
 
     for (int c = 0; c < num_channels; ++c) {
       output[batch_idx][y][x][c] = input[batch_idx][y_idx][x_idx][c];
@@ -320,30 +319,28 @@ __global__ void lanczos_4_interp_kernel(
         y_ids_base + 4,
     };
 
-    // 座標値に変換
     const scalar_t x_coords[8] = {
-        (static_cast<scalar_t>(x_ids[0]) + 0.5) * dx,
-        (static_cast<scalar_t>(x_ids[1]) + 0.5) * dx,
-        (static_cast<scalar_t>(x_ids[2]) + 0.5) * dx,
-        (static_cast<scalar_t>(x_ids[3]) + 0.5) * dx,
-        (static_cast<scalar_t>(x_ids[4]) + 0.5) * dx,
-        (static_cast<scalar_t>(x_ids[5]) + 0.5) * dx,
-        (static_cast<scalar_t>(x_ids[6]) + 0.5) * dx,
-        (static_cast<scalar_t>(x_ids[7]) + 0.5) * dx,
+        static_cast<scalar_t>(x_ids[0] + 0.5) * dx,
+        static_cast<scalar_t>(x_ids[1] + 0.5) * dx,
+        static_cast<scalar_t>(x_ids[2] + 0.5) * dx,
+        static_cast<scalar_t>(x_ids[3] + 0.5) * dx,
+        static_cast<scalar_t>(x_ids[4] + 0.5) * dx,
+        static_cast<scalar_t>(x_ids[5] + 0.5) * dx,
+        static_cast<scalar_t>(x_ids[6] + 0.5) * dx,
+        static_cast<scalar_t>(x_ids[7] + 0.5) * dx,
     };
 
     const scalar_t y_coords[8] = {
-        (static_cast<scalar_t>(y_ids[0]) + 0.5) * dy,
-        (static_cast<scalar_t>(y_ids[1]) + 0.5) * dy,
-        (static_cast<scalar_t>(y_ids[2]) + 0.5) * dy,
-        (static_cast<scalar_t>(y_ids[3]) + 0.5) * dy,
-        (static_cast<scalar_t>(y_ids[4]) + 0.5) * dy,
-        (static_cast<scalar_t>(y_ids[5]) + 0.5) * dy,
-        (static_cast<scalar_t>(y_ids[6]) + 0.5) * dy,
-        (static_cast<scalar_t>(y_ids[7]) + 0.5) * dy,
+        static_cast<scalar_t>(y_ids[0] + 0.5) * dy,
+        static_cast<scalar_t>(y_ids[1] + 0.5) * dy,
+        static_cast<scalar_t>(y_ids[2] + 0.5) * dy,
+        static_cast<scalar_t>(y_ids[3] + 0.5) * dy,
+        static_cast<scalar_t>(y_ids[4] + 0.5) * dy,
+        static_cast<scalar_t>(y_ids[5] + 0.5) * dy,
+        static_cast<scalar_t>(y_ids[6] + 0.5) * dy,
+        static_cast<scalar_t>(y_ids[7] + 0.5) * dy,
     };
 
-    // 距離を計算
     const scalar_t x_dist[8] = {
         (u - x_coords[0]) / dx,
         (u - x_coords[1]) / dx,
