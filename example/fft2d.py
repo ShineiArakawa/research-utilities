@@ -1,8 +1,5 @@
 import cv2
 import numpy as np
-import torch
-from matplotlib import pyplot as plt
-
 import research_utilities.common as _common
 import research_utilities.demo_imgs as _demo_imgs
 import research_utilities.signal as _signal
