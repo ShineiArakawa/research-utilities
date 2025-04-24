@@ -7,8 +7,6 @@ import numpy as np
 
 import research_utilities.common as _common
 
-_logger = _common.get_logger()
-
 
 def apply_color_map(img: np.ndarray, color_map_type: str) -> np.ndarray:
     """Apply color map to an image.
@@ -27,6 +25,8 @@ def apply_color_map(img: np.ndarray, color_map_type: str) -> np.ndarray:
     np.ndarray
         The colorized image. The output image is in BGR format.
     """
+
+    _logger = _common.get_logger()
 
     _logger.debug(f'img.shape: {img.shape}, img.dtype: {img.dtype}, color_map_type: {color_map_type}')
 

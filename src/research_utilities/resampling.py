@@ -56,6 +56,45 @@ def resample(
     scale_factor: float,
     interp_method: InterpMethod = InterpMethod.BILINEAR
 ) -> torch.Tensor:
+    """Resample an image using the specified interpolation method.
+    The input image must be on the GPU.
+
+    Parameters
+    ----------
+    img : torch.Tensor
+        Input image to be resampled. The input image must be on the GPU.
+        The input image can have 2, 3, or 4 dimensions.
+        - 2D image: [height, width]
+        - 3D image: [height, width, channels]
+        - 4D image: [batch, height, width, channels]
+    scale_factor : float
+        Scale factor for resampling. The output image will have the shape
+        [batch, out_height, out_width, channels], where
+        out_height = height * scale_factor
+        out_width = width * scale_factor
+        The output image will be in the same format as the input image.
+    interp_method : InterpMethod, optional
+        Interpolation method to be used for resampling. The default is
+        InterpMethod.BILINEAR. The available methods are:
+        - InterpMethod.NEAREST
+        - InterpMethod.BILINEAR
+        - InterpMethod.BICUBIC
+        - InterpMethod.LANCZOS4
+        The default is InterpMethod.BILINEAR.
+
+    Returns
+    -------
+    torch.Tensor
+        Resampled image. The output image will have the same format as the input image.
+        The output image will be on the GPU.
+
+    Raises
+    ------
+    ValueError
+        If the input image is not on the GPU or if the input image has
+        an invalid number of dimensions.
+    """
+
     assert img.is_cuda, 'The input image must be on the GPU.'
 
     # Check the input

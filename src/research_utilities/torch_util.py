@@ -11,9 +11,7 @@ import typing
 import torch
 import torch.utils.cpp_extension as _cpp_extension
 
-__all__ = [
-    'get_extension_loader'
-]
+import research_utilities.common as _common
 
 
 @dataclasses.dataclass
@@ -27,7 +25,7 @@ class ExtensionSpec:
 
 class ExtensionLoader:
     def __init__(self, src_dir: str = 'csrc'):
-        self._logger = logging.getLogger(__name__)
+        self._logger = _common.get_logger()
 
         self.extensions: typing.Dict = {}
         self.extension_spec: typing.Dict[str, ExtensionSpec] = {}

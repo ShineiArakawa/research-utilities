@@ -1,12 +1,21 @@
 import logging
 import os
+import pathlib
 import sys
 import typing
 
 
 class GlobalSettings:
-    DEBUG_MODE: typing.Final[bool] = False
-    GLOBAL_LOG_LEVEL: typing.Final[str] = "trace"
+    """Global settings for the project.
+    This class contains global constants and settings that can be used throughout the project.
+    It is recommended to use this class to store global settings instead of using environment variables
+    """
+
+    # autopep8: off
+    DEBUG_MODE       : typing.Final[bool]                        = False
+    GLOBAL_LOG_LEVEL : typing.Final[str]                         = "trace"
+    CACHE_DIR        : typing.Final[pathlib.Path]                = pathlib.Path("~/.cache/research_utilities").expanduser().resolve()
+    # autopep8: on
 
 
 def get_logger(

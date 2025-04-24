@@ -25,6 +25,8 @@ def test_bilinear_interp(test_image: str, logger: logging.Logger) -> None:
 
 
 def test_power_spectral_density(checkerboard_img: str, logger: logging.Logger) -> None:
+    logger.info(f'checkerboard_img: {checkerboard_img}')
+
     img = cv2.imread(checkerboard_img)
 
     img = torch.from_numpy(img).to(torch.float32).cuda()
@@ -35,7 +37,7 @@ def test_power_spectral_density(checkerboard_img: str, logger: logging.Logger) -
     logger.debug(f'img.dtype: {img.dtype}')
     logger.debug(f'img.min(): {img.min()}, img.max(): {img.max()}')
 
-    psd = _signal.calc_power_spectral_density(img)
+    psd = _signal.calc_radial_psd_profile(img)
 
     logger.debug(f'psd.shape: {psd.shape}')
     logger.debug(f'psd.dtype: {psd.dtype}')
