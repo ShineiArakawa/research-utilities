@@ -1,6 +1,8 @@
 #include <resampling.cuh>
 #include <signal.cuh>
 
+#define M_PI_CUDA 3.14159265358979323846
+
 // ---------------------------------------------------------------------------------------------------------
 // CUDA kernels
 // ---------------------------------------------------------------------------------------------------------
@@ -23,7 +25,7 @@ __global__ void calc_radial_psd_profile_kernel(
 
   if (i_div < n_divs && i_point < n_points) {
     // Calculate center position
-    const scalar_t delta_theta = 2.0 * M_PI / n_divs;
+    const scalar_t delta_theta = 2.0 * M_PI_CUDA / n_divs;
     const scalar_t theta = i_div * delta_theta;
 
     const scalar_t cos_theta = cos(theta);
@@ -66,7 +68,7 @@ __global__ void calc_radial_psd_profile_kernel(
                                    w_ll * input[batch_idx][y_px_high][x_px_low][c] +
                                    w_lr * input[batch_idx][y_px_high][x_px_high][c];
 
-      psd[batch_idx][i_div][i_point][c] = pixel_value * pixel_value;
+      psd[batch_idx][i_div][i_point][c] = pixel_value;
     }
   }
 }

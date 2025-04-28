@@ -11,17 +11,25 @@ import research_utilities.common as _common
 import research_utilities.torch_util as _torch_util
 
 
-@functools.lru_cache(maxsize=None)
-def _get_cpp_module():
+@functools.lru_cache()
+def _get_cpp_module(is_cuda: bool = True):
     ext_loader = _torch_util.get_extension_loader()
 
-    module = ext_loader.load(
-        name='signal',
-        sources=[
-            'signal.cpp',
+    name = 'signal'
+    sources = [
+        'signal.cpp',
+    ]
+
+    if is_cuda:
+        sources += [
             'signal.cu',
             'resampling.cu',
-        ],
+        ]
+        name += '_cuda'
+
+    module = ext_loader.load(
+        name=name,
+        sources=sources,
         debug=_common.GlobalSettings.DEBUG_MODE
     )
 
@@ -252,11 +260,9 @@ def _fft_2d_np(
 
 def _fft_2d_torch(
     img: torch.Tensor,
-        is_density: bool = False,
+    is_density: bool = False,
     is_db_scale: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    _logger = _common.get_logger()
-
     fft_img = torch.fft.fft2(img)
     fft_img_shifted = torch.fft.fftshift(fft_img)
     mag_power_spectrum = torch.abs(fft_img_shifted) ** 2
@@ -332,6 +338,29 @@ def fft_2d(
     return fft_img, spectrum
 
 
+def _calc_radial_psd_profile_impl(
+    psd: torch.Tensor,
+    n_divs: int,
+    n_points: int,
+):
+    # Convert to channels last format
+    psd = psd.permute(0, 2, 3, 1).contiguous()  # [batch, height, width, channel]
+
+    # Compute the power spectral density
+    _module = _get_cpp_module(is_cuda=psd.is_cuda)
+
+    radial_profile: torch.Tensor = _module.calc_radial_psd_profile(
+        psd,
+        n_divs,
+        n_points
+    )
+
+    # Convert back to channels first format
+    radial_profile = radial_profile.permute(0, 3, 1, 2)  # [batch, channel, n_divs, n_points]
+
+    return radial_profile
+
+
 def calc_radial_psd_profile(
     img: torch.Tensor,
     n_divs: int = 180,
@@ -343,7 +372,7 @@ def calc_radial_psd_profile(
     Parameters
     ----------
     img : torch.Tensor
-        Input image to be processed. The input image must be on the GPU.
+        Input image to be processed.
         The input image can have 2, 3, or 4 dimensions.
         - 2D image: [height, width]
         - 3D image: [height, width, channels]
@@ -366,7 +395,6 @@ def calc_radial_psd_profile(
     """
 
     assert isinstance(img, torch.Tensor), 'The input image must be a torch.Tensor.'
-    assert img.is_cuda, 'The input image must be on the GPU.'
 
     # Check the input
     if img.ndim == 2:
@@ -378,25 +406,11 @@ def calc_radial_psd_profile(
     elif img.ndim != 4:
         raise ValueError(f'Input image must have 2, 3, or 4 dimensions, but got {img.ndim}.')
 
-    dir_path = pathlib.Path('debug').resolve()
-    dir_path.mkdir(parents=True, exist_ok=True)
-
     # Apply FFT
     _, psd = _fft_2d_torch(img, is_density=True)  # [batch, channel, height, width]
 
-    # Convert to channels last format
-    psd = psd.permute(0, 2, 3, 1).contiguous()  # [batch, height, width, channel]
-
-    # Compute the power spectral density
-    _module = _get_cpp_module()
-
-    radial_profile: torch.Tensor = _module.calc_radial_psd_profile(
-        psd,
-        n_divs,
-        n_points
+    return _calc_radial_psd_profile_impl(
+        psd=psd,
+        n_divs=n_divs,
+        n_points=n_points
     )
-
-    # Convert back to channels first format
-    radial_profile = radial_profile.permute(0, 3, 1, 2)  # [batch, channel, n_divs, n_points]
-
-    return radial_profile

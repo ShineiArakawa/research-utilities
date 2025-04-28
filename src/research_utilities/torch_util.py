@@ -53,6 +53,7 @@ class ExtensionLoader:
         name: str,
         sources: list[str],
         src_root_dir: str | None = None,
+        with_omp: bool = False,
         verbose: bool = False,
         debug: bool = False
     ):
@@ -84,18 +85,52 @@ class ExtensionLoader:
             [source.endswith('.cuh') for source in sources]
         )
 
+        extra_cflags = []
+        extra_cuda_cflags = []
+        extra_ldflags = []
+
+        if with_cuda:
+            # Check if nvcc is available
+            if self._check_command('nvcc'):
+                extra_cflags += ['-DWITH_CUDA']
+                extra_cuda_cflags += ['-DWITH_CUDA']
+            else:
+                self._logger.warning('nvcc command not found. CUDA toolkit is properly installed?')
+                self._logger.warning('Falling back to CPU only build, excluding CUDA files.')
+
+                sources = [source for source in sources if (not source.endswith('.cu') and (not source.endswith('.cuh')))]
+
+                with_cuda = False
+
         # Set the extra flags
-        is_windows = platform.system() == 'Windows'
-        if is_windows:
-            extra_cflags = ['/O2']
-            extra_cuda_cflags = ['/O2']
+        platform_name = platform.system()
+        if platform_name == 'Windows':
+            extra_cflags += ['/O2']
+            extra_cuda_cflags += ['/O2']
         else:
-            extra_cflags = ['-O3']
-            extra_cuda_cflags = ['-O3']
+            extra_cflags += ['-O3']
+            extra_cuda_cflags += ['-O3']
+
+        # Add OpenMP flags
+        if with_omp:
+            if platform_name == 'Windows':
+                extra_cflags += ['/openmp']
+            elif platform_name == 'Darwin':
+                # macOS: Assume Homebrew clang (brew install libomp)
+                extra_cflags += ['-Xpreprocessor', '-fopenmp']
+                extra_ldflags += ['-lomp']
+            else:
+                # Linux
+                extra_cflags += ['-fopenmp']
+
+            extra_cflags += ['-DWITH_OPENMP']
+            extra_cuda_cflags += ['-DWITH_OPENMP']
+        else:
+            extra_ldflags += []
 
         if debug:
             # 'DEBUG_MODE' is defined in the C++ and cuda code
-            if is_windows:
+            if platform_name == 'Windows':
                 extra_cflags += ['/DDEBUG_MODE']
                 extra_cuda_cflags += ['/DDEBUG_MODE']
             else:
@@ -115,6 +150,7 @@ class ExtensionLoader:
             sources=sources,
             extra_cflags=extra_cflags,
             extra_cuda_cflags=extra_cuda_cflags,
+            extra_ldflags=extra_ldflags,
             extra_include_paths=extra_include_paths,
             build_directory=str(build_dir),
             verbose=verbose,

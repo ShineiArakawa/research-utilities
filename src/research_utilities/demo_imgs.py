@@ -52,7 +52,7 @@ def get_demo_image(idx: int = 8) -> pathlib.Path:
     return file_path
 
 
-def get_checkerboard_image(size: tuple[int. int] = (512, 512)) -> pathlib.Path:
+def get_checkerboard_image(size: tuple[int, int] = (512, 512)) -> pathlib.Path:
     r"""
     Create a checkerboard image and save it to the cache directory.
 
