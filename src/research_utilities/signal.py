@@ -301,10 +301,6 @@ def fft_2d(
         The 2D FFT and the power spectrum of the image.
     """
 
-    _logger = _common.get_logger()
-
-    _logger.debug(f'img.shape: {img.shape}')
-
     assert img.ndim >= 2
     assert file_path is None or (img.ndim == 2 or (img.ndim == 3 and img.shape[0] == 1))
 
@@ -325,8 +321,6 @@ def fft_2d(
         # To [0, 1]
         min_val = img.min()
         max_val = img.max()
-
-        _logger.debug(f'min_val: {min_val}, max_val: {max_val}')
 
         img = (img - min_val) / (max_val - min_val)
 
