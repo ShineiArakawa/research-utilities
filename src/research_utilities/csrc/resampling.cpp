@@ -59,7 +59,39 @@ at::Tensor resample_image_cuda(
 // Python interface
 // ----------------------------------------------------------------------------
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.doc() = "A module for resampling operations (CUDA)";
+  // Generate documentation
+  std::stringstream doc_stream;
+  doc_stream << "A module for resampling operations (CUDA)" << std::endl;
+  doc_stream << std::endl;
+  doc_stream << "(Compiled on " << __DATE__ << " at " << __TIME__ << ", with ";
+#if defined(__clang__)
+  doc_stream << "Clang version " << __clang_major__ << "." << __clang_minor__;
+#elif defined(__GNUC__)
+  doc_stream << "GCC version " << __GNUC__ << "." << __GNUC_MINOR__;
+#elif defined(_MSC_VER)
+  doc_stream << "MSVC version " << _MSC_VER;
+#else
+  doc_stream << "Unknown compiler";
+#endif
+  doc_stream << ")" << std::endl;
+  doc_stream << std::endl;
+  doc_stream << "[Definitions]" << std::endl;
+  doc_stream << "WITH_CUDA: ";
+#if defined(WITH_CUDA)
+  doc_stream << "YES";
+#else
+  doc_stream << "NO";
+#endif
+  doc_stream << std::endl;
+  doc_stream << "WITH_OPENMP: ";
+#if defined(WITH_OPENMP)
+  doc_stream << "YES";
+#else
+  doc_stream << "NO";
+#endif
+  doc_stream << std::endl;
+
+  m.doc() = doc_stream.str().c_str();
 
   // Interpolation methods
   py::enum_<InterpMethod>(m, "InterpMethod")

@@ -1,3 +1,7 @@
+"""Implementation of resampling using C++ and CUDA.
+This module provides a function to resample images using different interpolation methods.
+"""
+
 import enum
 import functools
 
@@ -8,7 +12,7 @@ import research_utilities.common as _common
 import research_utilities.torch_util as _torch_util
 
 
-@functools.lru_cache(maxsize=None)
+@functools.lru_cache()
 def _get_cpp_module():
     ext_loader = _torch_util.get_extension_loader()
 

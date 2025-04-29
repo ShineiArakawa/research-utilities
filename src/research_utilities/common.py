@@ -15,6 +15,7 @@ class GlobalSettings:
     DEBUG_MODE       : typing.Final[bool]                        = False
     GLOBAL_LOG_LEVEL : typing.Final[str]                         = "trace"
     CACHE_DIR        : typing.Final[pathlib.Path]                = pathlib.Path("~/.cache/research_utilities").expanduser().resolve()
+    TTF_ROBOTO_PATH  : typing.Final[pathlib.Path]                = pathlib.Path(__file__).parent / "fonts" / "Roboto-Regular.ttf"
     # autopep8: on
 
 

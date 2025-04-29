@@ -31,6 +31,15 @@ void calc_radial_psd_profile_cpu(
   const scalar_t dx = 1.0 / static_cast<scalar_t>(input_width);
   const scalar_t dy = 1.0 / static_cast<scalar_t>(input_height);
 
+#if defined(WITH_OPENMP)
+#pragma omp parallel for collapse(2)
+  for (int i_div = 0; i_div < n_divs; ++i_div) {
+    for (int i_point = 0; i_point < n_points; ++i_point) {
+      const scalar_t theta = i_div * delta_theta;
+
+      const scalar_t cos_theta = std::cos(theta);
+      const scalar_t sin_theta = std::sin(theta);
+#else
   for (int i_div = 0; i_div < n_divs; ++i_div) {
     const scalar_t theta = i_div * delta_theta;
 
@@ -38,6 +47,7 @@ void calc_radial_psd_profile_cpu(
     const scalar_t sin_theta = std::sin(theta);
 
     for (int i_point = 0; i_point < n_points; ++i_point) {
+#endif
       const scalar_t r = i_point * delta_r;
 
       const scalar_t x = r * cos_theta + 0.5;  // [0, 1]

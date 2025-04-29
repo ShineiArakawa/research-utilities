@@ -1,4 +1,5 @@
-
+"""This script has a main function that resizes images in a directory to a target size.
+"""
 
 import argparse
 import os

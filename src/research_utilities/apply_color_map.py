@@ -5,10 +5,8 @@ import matplotlib as mpl
 import matplotlib.colors as mplib_colors
 import numpy as np
 
-import research_utilities.common as _common
 
-
-def apply_color_map(img: np.ndarray, color_map_type: str) -> np.ndarray:
+def apply_color_map(img: np.ndarray, color_map_type: str = 'viridis') -> np.ndarray:
     """Apply color map to an image.
 
     The input image must be a single channel image.

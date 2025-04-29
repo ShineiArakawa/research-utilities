@@ -1,3 +1,8 @@
+"""This module provides a class to load C++/CUDA extensions for PyTorch.
+
+メモ： gcc/g++ + CUDA + OpenMPでのみ動作することを確認した
+"""
+
 import dataclasses
 import functools
 import os
@@ -6,6 +11,7 @@ import platform
 import shutil
 import sys
 import typing
+import uuid
 
 import torch
 import torch.utils.cpp_extension as _cpp_extension
@@ -15,16 +21,21 @@ import research_utilities.common as _common
 
 @dataclasses.dataclass
 class ExtensionSpec:
-    name: str
-    sources: list[str]
-    src_root_dir: str
-    verbose: bool
-    debug: bool
+    # autopep8: off
+    name         : str
+    sources      : list[str]
+    src_root_dir : str
+    with_omp     : bool
+    verbose      : bool
+    debug        : bool
+    # autopep8: on
 
 
 class ExtensionLoader:
     def __init__(self, src_dir: str = 'csrc'):
-        self._logger = _common.get_logger()
+        # self._logger = _common.get_logger()
+        import logging
+        self._logger = logging.getLogger(__name__)
 
         self.extensions: typing.Dict = {}
         self.extension_spec: typing.Dict[str, ExtensionSpec] = {}
@@ -61,15 +72,25 @@ class ExtensionLoader:
             name=name,
             sources=sources,
             src_root_dir=src_root_dir,
+            with_omp=with_omp,
             verbose=verbose,
             debug=debug
         )
 
         # Check if the extension is already loaded
-        if name in self.extensions:
-            return self.extensions[name]
+        matched_ext_id = None
+        for ext_id in self.extensions.keys():
+            spec = self.extension_spec[ext_id]
+            if extension_spec == spec:
+                matched_ext_id = ext_id
+                break
 
+        if matched_ext_id is not None:
+            return self.extensions[matched_ext_id]
+
+        # Build the extension
         self._logger.info(f'Building \'{name}\' ... ')
+        self._logger.debug(f'Extension spec: {extension_spec}')
 
         # Check if the sources are relative to the src_root_dir
         if src_root_dir is None:
@@ -155,11 +176,11 @@ class ExtensionLoader:
             build_directory=str(build_dir),
             verbose=verbose,
             with_cuda=with_cuda,
-
         )
 
-        self.extensions[name] = module
-        self.extension_spec[name] = extension_spec
+        ext_id = str(uuid.uuid4())
+        self.extensions[ext_id] = module
+        self.extension_spec[ext_id] = extension_spec
 
         return module
 

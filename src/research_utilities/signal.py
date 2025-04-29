@@ -1,5 +1,9 @@
+"""Provide signal processing tools including 1D, 2D FFT, Radial PSD profile,
+"""
+
 import functools
 import pathlib
+import typing
 
 import cv2
 import matplotlib.pyplot as plt
@@ -10,9 +14,11 @@ import research_utilities.apply_color_map as _cm
 import research_utilities.common as _common
 import research_utilities.torch_util as _torch_util
 
+ArrayLike = typing.TypeVar('ArrayLike', np.ndarray, torch.Tensor)
+
 
 @functools.lru_cache()
-def _get_cpp_module(is_cuda: bool = True):
+def _get_cpp_module(is_cuda: bool = True, with_omp: bool = True) -> typing.Any:
     ext_loader = _torch_util.get_extension_loader()
 
     name = 'signal'
@@ -30,7 +36,8 @@ def _get_cpp_module(is_cuda: bool = True):
     module = ext_loader.load(
         name=name,
         sources=sources,
-        debug=_common.GlobalSettings.DEBUG_MODE
+        debug=_common.GlobalSettings.DEBUG_MODE,
+        with_omp=with_omp,
     )
 
     return module
@@ -228,8 +235,8 @@ def fft_1d(
 
 
 def _fft_2d(
-    img: np.ndarray | torch.Tensor,
-) -> tuple[np.ndarray | torch.Tensor, np.ndarray | torch.Tensor]:
+    img: ArrayLike,
+) -> tuple[ArrayLike, ArrayLike]:
     if isinstance(img, np.ndarray):
         return _fft_2d_np(img)
     elif isinstance(img, torch.Tensor):
@@ -243,8 +250,6 @@ def _fft_2d_np(
     is_density: bool = False,
     is_db_scale: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
-    _logger = _common.get_logger()
-
     fft_img = np.fft.fft2(img)
     fft_img_shifted = np.fft.fftshift(fft_img)
     mag_power_spectrum = np.abs(fft_img_shifted) ** 2
@@ -336,14 +341,35 @@ def _calc_radial_psd_profile_impl(
     psd: torch.Tensor,
     n_divs: int,
     n_points: int,
-):
+    enable_omp: bool = True,
+) -> torch.Tensor:
+    """Calculate the radial power spectral density.
+
+    Parameters
+    ----------
+    psd : torch.Tensor
+        Input power spectral density. Must be 4D tensor with shape [batch, channel, height, width].
+    n_divs : int
+        Number of bins for the radial angle.
+    n_points : int
+        Number of points for the polar coordinate.
+    enable_omp : bool, optional
+        Whether to enable OpenMP for parallel processing, by default True.
+        This only affects the C++ implementation.
+
+    Returns
+    -------
+    torch.Tensor
+        Radial power spectral density profile. The output will have the shape [batch, channel, n_divs, n_points].
+    """
+
     # Convert to channels last format
     psd = psd.permute(0, 2, 3, 1).contiguous()  # [batch, height, width, channel]
 
     # Compute the power spectral density
-    _module = _get_cpp_module(is_cuda=psd.is_cuda)
+    _module = _get_cpp_module(is_cuda=psd.is_cuda, with_omp=enable_omp)
 
-    radial_profile: torch.Tensor = _module.calc_radial_psd_profile(
+    radial_profile = _module.calc_radial_psd_profile(
         psd,
         n_divs,
         n_points
@@ -359,6 +385,7 @@ def calc_radial_psd_profile(
     img: torch.Tensor,
     n_divs: int = 180,
     n_points: int = 512,
+    enable_omp: bool = True,
 ) -> torch.Tensor:
     """
     Compute the radial power spectral density profile of an image.
@@ -375,6 +402,9 @@ def calc_radial_psd_profile(
         Number of divisions for the radial angle, by default 180
     n_points : int, optional
         Number of points for the radial profile, by default 512
+    enable_omp : bool, optional
+        Whether to enable OpenMP for parallel processing, by default True
+        This only affects the C++ implementation.
 
     Returns
     -------
@@ -406,5 +436,6 @@ def calc_radial_psd_profile(
     return _calc_radial_psd_profile_impl(
         psd=psd,
         n_divs=n_divs,
-        n_points=n_points
+        n_points=n_points,
+        enable_omp=enable_omp
     )
