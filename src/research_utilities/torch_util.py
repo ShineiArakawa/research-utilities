@@ -33,9 +33,7 @@ class ExtensionSpec:
 
 class ExtensionLoader:
     def __init__(self, src_dir: str = 'csrc'):
-        # self._logger = _common.get_logger()
-        import logging
-        self._logger = logging.getLogger(__name__)
+        self._logger = _common.get_logger()
 
         self.extensions: typing.Dict = {}
         self.extension_spec: typing.Dict[str, ExtensionSpec] = {}

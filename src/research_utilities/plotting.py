@@ -11,6 +11,7 @@ def add_title(
     text_color: list[int],
     background_color: list[int],
     text_size: int = 36,
+    is_BGR: bool = True,
 ) -> np.ndarray:
     """Add a title to an image.
     This method uses 'Roboto-Regular' font to draw the title on the image.
@@ -18,7 +19,7 @@ def add_title(
     Parameters
     ----------
     img : np.ndarray
-        An image in BGR or BGRA format.
+        The image to which the title will be added.
         The image must be 3D (H, W, C) and have 3 or 4 channels.
     text : str
         The title text to be added to the image.
@@ -30,12 +31,15 @@ def add_title(
         The size of the text, by default 36.
         This is used to calculate the height of the title.
         The width is calculated based on the text length.
+    is_BGR : bool, optional
+        If True, the input image is assumed to be in BGR format (OpenCV default).
+        If False, the input image is assumed to be in RGB format (PIL default).
+        By default True.
 
     Returns
     -------
     np.ndarray
         The image with the title added.
-        The image is in BGR or BGRA format, depending on the input image.
     """
 
     assert img.ndim == 3, f"Image must be 3D (H, W, C), got {img.ndim}D"
@@ -44,7 +48,9 @@ def add_title(
     assert img.shape[2] == len(background_color), f"Background color must have the same number of channels as the image, got {len(background_color)} for {img.shape[2]}"
 
     # Convert the image to PIL format
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB if img.shape[2] == 3 else cv2.COLOR_BGRA2RGBA)
+    if is_BGR:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB if img.shape[2] == 3 else cv2.COLOR_BGRA2RGBA)
+
     img_pil = Image.fromarray(img)
 
     # Create a new image with the same size and a white background
@@ -86,6 +92,9 @@ def add_title(
 
     # Convert back to numpy array
     out_img = np.array(canvas)
-    out_img = cv2.cvtColor(out_img, cv2.COLOR_RGB2BGR if img.shape[2] == 3 else cv2.COLOR_RGBA2BGRA)
+
+    if is_BGR:
+        # Convert back to BGR format
+        out_img = cv2.cvtColor(out_img, cv2.COLOR_RGB2BGR if img.shape[2] == 3 else cv2.COLOR_RGBA2BGRA)
 
     return out_img
