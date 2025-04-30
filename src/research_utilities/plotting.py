@@ -64,7 +64,6 @@ def add_title(
     draw = ImageDraw.Draw(new_img)
 
     # Load a default font
-    text_size = 36
     font = ImageFont.truetype(str(_common.GlobalSettings.TTF_ROBOTO_PATH), text_size)
 
     # Calculate text size
