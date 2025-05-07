@@ -1,3 +1,6 @@
+"""Demo images for testing and debugging on the fly.
+"""
+
 import pathlib
 
 import cv2

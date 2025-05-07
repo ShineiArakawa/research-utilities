@@ -1,3 +1,6 @@
+"""Utility functions for color maps
+"""
+
 import random
 
 import cv2

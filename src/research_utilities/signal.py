@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-import research_utilities.apply_color_map as _cm
+import research_utilities.cmap as _cmap
 import research_utilities.common as _common
 import research_utilities.torch_util as _torch_util
 
@@ -318,7 +318,7 @@ def fft_2d(
         path = pathlib.Path(file_path).resolve()
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        img = _cm.apply_color_map(
+        img = _cmap.apply_color_map(
             img=spectrum,
             color_map_type=color_map_type
         )  # img is returned in BGR format and float32 dtype
@@ -414,8 +414,7 @@ def calc_radial_psd_profile(
     Raises
     ------
     ValueError
-        If the input image is not on the GPU or if the input image has
-        an invalid number of dimensions.
+        If the input image has an invalid number of dimensions.
     """
 
     assert isinstance(img, torch.Tensor), 'The input image must be a torch.Tensor.'

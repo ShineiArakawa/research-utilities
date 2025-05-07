@@ -111,7 +111,7 @@ at::Tensor calc_radial_psd_profile(
   launch_calc_radial_psd_profile_kernel(input, psd);
 #else
   // CPU implementation
-  calc_radial_psd_profile_cpu<float>(input, psd);
+  calc_radial_psd_profile_cpu<double>(input, psd);
 #endif
 
   return psd;

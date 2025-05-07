@@ -1,3 +1,6 @@
+"""Multi-processing utilities for parallel execution of functions.
+"""
+
 import multiprocessing as mp
 import os
 import typing

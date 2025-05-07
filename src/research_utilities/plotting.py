@@ -1,3 +1,6 @@
+"""Utility module for plotting and visualization.
+"""
+
 import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
