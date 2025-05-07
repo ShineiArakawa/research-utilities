@@ -120,11 +120,6 @@ __global__ void bilinear_interp_kernel(
 
     const int4 neighbor_pixel_ids = get_neighbor_pixel_ids(u, v, input_width, input_height);
 
-#if defined(DEBUG_MODE)
-    assert(x_idx_low < x_idx_high);
-    assert(y_idx_low < y_idx_high);
-#endif
-
     const scalar_t x_low = (static_cast<scalar_t>(neighbor_pixel_ids.x) + 0.5) * dx;
     const scalar_t y_low = (static_cast<scalar_t>(neighbor_pixel_ids.y) + 0.5) * dy;
     const scalar_t x_high = (static_cast<scalar_t>(neighbor_pixel_ids.z) + 0.5) * dx;

@@ -117,7 +117,7 @@ def test_power_spectral_density_cpu_openmp_gpu(checkerboard_img: str, logger: lo
         assert torch.isnan(psd_gpu).sum() == 0, "NaN values found in GPU result"
 
     def relative_error(a, b):
-        return torch.abs(a - b) / (torch.abs(b) + 1e-8)
+        return torch.abs(a - b) / (torch.abs(b) + 1e-12)
 
     relerr_cpu_omp = relative_error(psd_cpu, psd_omp)
     if is_cuda_available:
@@ -131,6 +131,5 @@ def test_power_spectral_density_cpu_openmp_gpu(checkerboard_img: str, logger: lo
 
     assert torch.all(relerr_cpu_omp < tolerance), f"CPU and OMP results differ by more than {tolerance}: {relerr_cpu_omp.max()}"
     if is_cuda_available:
-        assert torch.all(relerr_omp_gpu < tolerance), f"OMP and GPU results differ by more than {tolerance}: {relerr_omp_gpu.max()}"
-        assert torch.all(relerr_gpu_cpu < tolerance), f"GPU and CPU results differ by more than {tolerance}: {relerr_gpu_cpu.max()}"
-        assert torch.all(relerr_gpu_cpu < tolerance), f"GPU and CPU results differ by more than {tolerance}: {relerr_gpu_cpu.max()}"
+        assert torch.all(relerr_omp_gpu < tolerance), f"OMP and GPU results differ by more than {tolerance}: {relerr_omp_gpu.mean()}"
+        assert torch.all(relerr_gpu_cpu < tolerance), f"GPU and CPU results differ by more than {tolerance}: {relerr_gpu_cpu.mean()}"

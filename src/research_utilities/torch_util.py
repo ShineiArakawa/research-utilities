@@ -1,17 +1,17 @@
 """This module provides a class to load C++/CUDA extensions for PyTorch.
-
-メモ： gcc/g++ + CUDA + OpenMPでのみ動作することを確認した
 """
 
 import dataclasses
+import datetime
 import functools
+import hashlib
+import json
 import os
 import pathlib
 import platform
 import shutil
 import sys
 import typing
-import uuid
 
 import torch
 import torch.utils.cpp_extension as _cpp_extension
@@ -19,24 +19,51 @@ import torch.utils.cpp_extension as _cpp_extension
 import research_utilities.common as _common
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class ExtensionSpec:
+    """Extension specification to uniquely identify a loaded extension.
+    """
+
     # autopep8: off
     name         : str
-    sources      : list[str]
+    sources      : tuple[str, ...]
     src_root_dir : str
     with_omp     : bool
     verbose      : bool
     debug        : bool
     # autopep8: on
 
+    def deterministic_hash(self) -> str:
+        """Generate a deterministic hash for the extension specification.
+        This hash is used to uniquely identify the extension.
+
+        The function 'hash', which is provided by Python standard library, yields different values for the same object in different sessions.
+        So, we use 'hashlib' which can generate a unique hash for the same object across different sessions.
+        """
+
+        spec_json = json.dumps(dataclasses.asdict(self), sort_keys=True)
+        byte_codes = spec_json.encode('utf-8')
+
+        return hashlib.sha256(byte_codes).hexdigest()
+
+
+@dataclasses.dataclass(frozen=True)
+class Extension:
+    # autopep8: off
+    spec       : ExtensionSpec
+    module     : typing.Any
+    build_dir  : pathlib.Path
+    timestamp  : str
+    # autopep8: on
+
 
 class ExtensionLoader:
     def __init__(self, src_dir: str = 'csrc'):
-        self._logger = _common.get_logger()
+        # self._logger = _common.get_logger()
+        import logging
+        self._logger = logging.getLogger(__name__)
 
-        self.extensions: typing.Dict = {}
-        self.extension_spec: typing.Dict[str, ExtensionSpec] = {}
+        self.extensions: dict[str, Extension] = {}
 
         self.src_root_dir = (pathlib.Path(src_dir) if os.path.isabs(src_dir) else (pathlib.Path(__file__).parent / src_dir)).resolve()
 
@@ -65,26 +92,21 @@ class ExtensionLoader:
         with_omp: bool = False,
         verbose: bool = False,
         debug: bool = False
-    ):
+    ) -> typing.Any:
         extension_spec = ExtensionSpec(
             name=name,
-            sources=sources,
+            sources=tuple(sources),
             src_root_dir=src_root_dir,
             with_omp=with_omp,
             verbose=verbose,
             debug=debug
         )
 
-        # Check if the extension is already loaded
-        matched_ext_id = None
-        for ext_id in self.extensions.keys():
-            spec = self.extension_spec[ext_id]
-            if extension_spec == spec:
-                matched_ext_id = ext_id
-                break
+        extension_hash = extension_spec.deterministic_hash()
 
-        if matched_ext_id is not None:
-            return self.extensions[matched_ext_id]
+        # Check if the extension is already loaded
+        if extension_hash in self.extensions:
+            return self.extensions[extension_hash].module
 
         # Build the extension
         self._logger.info(f'Building \'{name}\' ... ')
@@ -158,12 +180,16 @@ class ExtensionLoader:
 
         # build directory
         pycache_dir = pathlib.Path(sys.pycache_prefix) if sys.pycache_prefix else pathlib.Path(__file__).parent / '__pycache__'
-        build_dir = pycache_dir / 'torch_extensions' / name
+        build_dir = pycache_dir / 'torch_extensions' / extension_hash
         build_dir.mkdir(parents=True, exist_ok=True)
+
+        self._logger.debug(f'Build directory: {build_dir}')
 
         # Add include directories
         extra_include_paths = [str(src_root_dir)]
 
+        # -----------------------------------------------------------------------------
+        # Build the extension
         module = _cpp_extension.load(
             name=name,
             sources=sources,
@@ -176,9 +202,28 @@ class ExtensionLoader:
             with_cuda=with_cuda,
         )
 
-        ext_id = str(uuid.uuid4())
-        self.extensions[ext_id] = module
-        self.extension_spec[ext_id] = extension_spec
+        # -----------------------------------------------------------------------------
+        now = datetime.datetime.now()
+        timestamp = now.strftime('%Y-%m-%d %H:%M:%S')
+
+        extension = Extension(
+            spec=extension_spec,
+            module=module,
+            build_dir=build_dir,
+            timestamp=timestamp
+        )
+
+        with open(build_dir / 'extension_spec.json', 'w') as file:
+            to_save = {
+                'build_dir': str(build_dir),
+                'timestamp': timestamp,
+                'spec': dataclasses.asdict(extension.spec),
+            }
+            json.dump(to_save, file, indent=4)
+
+        # -----------------------------------------------------------------------------
+        # Cache the extension
+        self.extensions[extension_hash] = extension
 
         return module
 
