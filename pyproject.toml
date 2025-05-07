@@ -1,6 +1,6 @@
 [project]
 name = "research-utilities"
-version = "1.1.3"
+version = "1.1.4"
 description = "Research utilities for computer vision and deep learning"
 authors = [{ name = "Shinei Arakawa", email = "sarakaawalab@gmail.com" }]
 readme = "README.md"
