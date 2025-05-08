@@ -26,6 +26,7 @@ Contact
 
 # ----------------------------------------------------------------------------
 # Check Python version
+
 import sys
 
 if sys.version_info < (3, 10):
@@ -33,6 +34,7 @@ if sys.version_info < (3, 10):
 
 # ----------------------------------------------------------------------------
 # Check the version of this package
+
 import importlib.metadata
 
 try:
@@ -50,7 +52,8 @@ from .demo_imgs import get_checkerboard_image, get_demo_image
 from .multi_processing import launch_multi_process
 from .plotting import add_title
 from .resampling import InterpMethod, resample
-from .signal import calc_radial_psd_profile, fft_1d, fft_2d, plot_signal
+from .signal import (calc_radial_psd_profile, compute_radial_psd, fft_1d,
+                     fft_2d, plot_signal)
 
 __all__ = [
     "apply_color_map",
@@ -62,6 +65,7 @@ __all__ = [
     "InterpMethod",
     "resample",
     "calc_radial_psd_profile",
+    "compute_radial_psd",
     "fft_1d",
     "fft_2d",
     "plot_signal",
