@@ -9,6 +9,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import typing_extensions
 
 import research_utilities.cmap as _cmap
 import research_utilities.common as _common
@@ -381,6 +382,7 @@ def _calc_radial_psd_profile_impl(
     return radial_profile
 
 
+@typing_extensions.deprecated("This function is deprecated and will be removed in future versions. Use `compute_radial_psd` instead.")
 def calc_radial_psd_profile(
     img: torch.Tensor,
     n_divs: int = 180,
@@ -396,8 +398,8 @@ def calc_radial_psd_profile(
         Input image to be processed.
         The input image can have 2, 3, or 4 dimensions.
         - 2D image: [height, width]
-        - 3D image: [height, width, channels]
-        - 4D image: [batch, height, width, channels]
+        - 3D image: [channels, height, width]
+        - 4D image: [batch, channels, height, width]
     n_divs : int, optional
         Number of divisions for the radial angle, by default 180
     n_points : int, optional
@@ -438,3 +440,73 @@ def calc_radial_psd_profile(
         n_points=n_points,
         enable_omp=enable_omp
     )
+
+
+def compute_radial_psd(
+    img: ArrayLike,
+    n_divs: int = 180,
+    n_points: int = 512,
+    enable_omp: bool = True,
+) -> ArrayLike:
+    """
+    Compute the radial power spectral density of images.
+
+    Parameters
+    ----------
+    img : ArrayLike (np.ndarray or torch.Tensor)
+        Input image to be processed.
+        The input image can have 2, 3, or 4 dimensions.
+        - 2D image: [height, width]
+        - 3D image: [channels, height, width]
+        - 4D image: [batch, channels, height, width]
+    n_divs : int, optional
+        Number of divisions for the radial angle, by default 180
+    n_points : int, optional
+        Number of points for the radial profile, by default 512
+    enable_omp : bool, optional
+        Whether to enable OpenMP for parallel processing, by default True
+        This only affects the C++ implementation.
+
+    Returns
+    -------
+    ArrayLike (np.ndarray or torch.Tensor)
+        Radial power spectral density profile. The output image will have the shape `[batch, channel, n_divs, n_points]`.
+
+    Raises
+    ------
+    ValueError
+        If the input image has an invalid number of dimensions.
+    """
+
+    # If the input is a numpy array, convert it to a torch tensor
+    is_np = isinstance(img, np.ndarray)
+    if is_np:
+        # Convert to torch.Tensor
+        img = torch.from_numpy(img).float()
+
+    # Check the input
+    if img.ndim == 2:
+        # Add the batch and channel dimensions
+        img = img.unsqueeze(0).unsqueeze(0)
+    elif img.ndim == 3:
+        # Add the batch dimension
+        img = img.unsqueeze(0)
+    elif img.ndim != 4:
+        raise ValueError(f'Input image must have 2, 3, or 4 dimensions, but got {img.ndim}.')
+
+    # Apply FFT
+    _, psd = _fft_2d_torch(img, is_density=True)  # [batch, channel, height, width]
+
+    # Compute the radial power spectral density
+    radial_psd = _calc_radial_psd_profile_impl(
+        psd=psd,
+        n_divs=n_divs,
+        n_points=n_points,
+        enable_omp=enable_omp
+    )
+
+    if is_np:
+        # Convert back to numpy array
+        radial_psd = radial_psd.cpu().numpy()
+
+    return radial_psd
