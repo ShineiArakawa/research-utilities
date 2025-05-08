@@ -510,3 +510,28 @@ def compute_radial_psd(
         radial_psd = radial_psd.cpu().numpy()
 
     return radial_psd
+
+
+def radial_freq(
+    img_size: int,
+    n_points: int,
+    dtype: typing.Type = np.float32,
+) -> np.ndarray:
+    """Generate radial frequency values for a given image size and number of points.
+
+    Parameters
+    ----------
+    img_size : int
+        The size of the image (assumed to be square).
+    n_points : int
+        The number of points in the radial frequency.
+    dtype : type, optional
+        The data type of the output array, by default np.float32.
+
+    Returns
+    -------
+    np.ndarray
+        The radial frequency values.
+    """
+
+    return np.linspace(0.0, img_size // 2, n_points,  dtype=dtype)
