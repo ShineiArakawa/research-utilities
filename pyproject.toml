@@ -2,7 +2,7 @@
 name = "research-utilities"
 version = "1.1.5"
 description = "Research utilities for computer vision and deep learning"
-authors = [{ name = "Shinei Arakawa", email = "sarakaawalab@gmail.com" }]
+authors = [{ name = "Shinei Arakawa", email = "sarakawalab@gmail.com" }]
 readme = "README.md"
 license = { file = "LICENSE" }
 keywords = ["computer vision", "deep learning", "utilities"]
@@ -31,10 +31,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
-dev = [
-    "gdown>=5.2.0",
-    "pytest>=8.3.5",
-]
+dev = ["gdown>=5.2.0", "pytest>=8.3.5"]
 
 [tool.pytest.ini_options]
 log_cli = true
