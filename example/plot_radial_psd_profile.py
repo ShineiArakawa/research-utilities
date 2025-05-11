@@ -50,5 +50,5 @@ def main(with_cuda: bool = True) -> None:
 
 
 if __name__ == '__main__':
-    main(with_cuda=True)
+    # main(with_cuda=True)
     main(with_cuda=False)

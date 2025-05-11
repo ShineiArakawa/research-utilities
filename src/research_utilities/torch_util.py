@@ -4,6 +4,7 @@
 import dataclasses
 import datetime
 import functools
+import glob
 import hashlib
 import json
 import os
@@ -11,6 +12,7 @@ import pathlib
 import platform
 import shutil
 import sys
+import sysconfig
 import typing
 
 import torch
@@ -108,9 +110,37 @@ class ExtensionLoader:
         if extension_hash in self.extensions:
             return self.extensions[extension_hash].module
 
+        # --------------------------------------------------------------------------
         # Build the extension
         self._logger.info(f'Building \'{name}\' ... ')
         self._logger.debug(f'Extension spec: {extension_spec}')
+
+        platform_name = platform.system()
+
+        if platform_name == 'Windows':
+            # Find cl.exe and add it to the PATH
+            machine_arch = sysconfig.get_platform().split('-')[-1].lower()
+            assert machine_arch in ['amd64', 'arm64'], f'Unsupported machine architecture: {machine_arch}'
+
+            msvc_arch_name = 'x64' if machine_arch == 'amd64' else 'arm64'
+            msvc_bin_dir_pattern = f'C:\\Program Files*\\Microsoft Visual Studio\\*\\*\\VC\\Tools\\MSVC\\*\\bin\\Host{msvc_arch_name}\\{msvc_arch_name}'
+
+            matched_dirs = glob.glob(msvc_bin_dir_pattern)
+
+            if len(matched_dirs) == 0:
+                msvc_bin_dir = None
+                self._logger.warning(f'No MSVC bin directory found for {msvc_arch_name}.')
+            elif len(matched_dirs) == 1:
+                msvc_bin_dir = matched_dirs[0]
+                self._logger.debug(f'Found MSVC bin directory: {msvc_bin_dir}')
+            elif len(matched_dirs) > 1:
+                msvc_bin_dir = matched_dirs[-1]
+                self._logger.warning(f'Multiple MSVC bin directories found for {msvc_arch_name}: {matched_dirs}')
+                self._logger.warning(f'Using the last one: {msvc_bin_dir}')
+
+            if msvc_bin_dir is not None:
+                # Add the MSVC bin directory to the PATH
+                os.environ['PATH'] = f'{msvc_bin_dir};{os.environ["PATH"]}'
 
         # Check if the sources are relative to the src_root_dir
         if src_root_dir is None:
@@ -144,7 +174,6 @@ class ExtensionLoader:
                 with_cuda = False
 
         # Set the extra flags
-        platform_name = platform.system()
         if platform_name == 'Windows':
             extra_cflags += ['/O2']
             extra_cuda_cflags += ['/O2']
