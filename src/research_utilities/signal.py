@@ -432,7 +432,7 @@ def calc_radial_psd_profile(
         raise ValueError(f'Input image must have 2, 3, or 4 dimensions, but got {img.ndim}.')
 
     # Apply FFT
-    _, psd = _fft_2d_torch(img, is_density=True)  # [batch, channel, height, width]
+    _, psd = _fft_2d_torch(img, is_density=True, is_db_scale=False)  # [batch, channel, height, width]
 
     return _calc_radial_psd_profile_impl(
         psd=psd,
@@ -446,7 +446,6 @@ def compute_radial_psd(
     img: ArrayLike,
     n_divs: int = 180,
     n_points: int = 512,
-    enable_omp: bool = True,
 ) -> ArrayLike:
     """
     Compute the radial power spectral density of images.
@@ -463,9 +462,6 @@ def compute_radial_psd(
         Number of divisions for the radial angle, by default 180
     n_points : int, optional
         Number of points for the radial profile, by default 512
-    enable_omp : bool, optional
-        Whether to enable OpenMP for parallel processing, by default True
-        This only affects the C++ implementation.
 
     Returns
     -------
@@ -478,6 +474,7 @@ def compute_radial_psd(
         If the input image has an invalid number of dimensions.
     """
 
+    # ----------------------------------------------------------------------------------------------------
     # If the input is a numpy array, convert it to a torch tensor
     is_np = isinstance(img, np.ndarray)
     if is_np:
@@ -494,17 +491,20 @@ def compute_radial_psd(
     elif img.ndim != 4:
         raise ValueError(f'Input image must have 2, 3, or 4 dimensions, but got {img.ndim}.')
 
+    # ----------------------------------------------------------------------------------------------------
     # Apply FFT
-    _, psd = _fft_2d_torch(img, is_density=True)  # [batch, channel, height, width]
+    _, psd = _fft_2d_torch(img, is_density=True, is_db_scale=False)  # [batch, channel, height, width]
 
+    # ----------------------------------------------------------------------------------------------------
     # Compute the radial power spectral density
     radial_psd = _calc_radial_psd_profile_impl(
         psd=psd,
         n_divs=n_divs,
         n_points=n_points,
-        enable_omp=enable_omp
+        enable_omp=True
     )
 
+    # ----------------------------------------------------------------------------------------------------
     if is_np:
         # Convert back to numpy array
         radial_psd = radial_psd.cpu().numpy()
@@ -531,7 +531,21 @@ def radial_freq(
     Returns
     -------
     np.ndarray
-        The radial frequency values.
+        The radial frequency values for the real parts.
     """
 
-    return np.linspace(0.0, img_size // 2, n_points,  dtype=dtype)
+    assert isinstance(img_size, int) and img_size > 0, 'img_size must be a positive integer.'
+    assert isinstance(n_points, int) and n_points > 0, 'n_points must be a positive integer.'
+
+    max_index = (img_size - 1) // 2
+
+    # NOTE: Reference for the frequency calculation:
+    #     'numpy.fft.fftfreq' in NumPy's API reference (URL: https://numpy.org/doc/2.2/reference/generated/numpy.fft.fftfreq.html#numpy-fft-fftfreq)
+    #     'numpy/fft/_helper.py' (URL: https://github.com/numpy/numpy/blob/e7a123b2d3eca9897843791dd698c1803d9a39c2/numpy/fft/_helper.py#L125-L177)
+    #
+    # f = [0, 1, ...,   n/2-1,     -n/2, ..., -1] / (d*n)   if n is even
+    # f = [0, 1, ..., (n-1)/2, -(n-1)/2, ..., -1] / (d*n)   if n is odd
+
+    freq = np.linspace(0.0, float(max_index), n_points, dtype=dtype, endpoint=True) / (float(img_size) * 1.0)  # d = 1.0
+
+    return freq

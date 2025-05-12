@@ -30,11 +30,13 @@ def main(with_cuda: bool = True) -> None:
     radial_prof = radial_prof.squeeze(0).squeeze(0).cpu().numpy()
     radial_prof = radial_prof.mean(axis=0)  # mean over the radial dimension
 
+    freq = _signal.radial_freq(img.shape[0], n_points=radial_prof.shape[0])
+
     # Plot the radial PSD profile
     fig = plt.figure(dpi=300)
     ax = fig.add_subplot(111)
 
-    ax.plot(radial_prof, label='Radial PSD Profile')
+    ax.plot(freq[1:], radial_prof[1:], label='Radial PSD Profile')
     ax.set_xlabel('Frequency (cycles/pixel)')
     ax.set_ylabel('Power Spectral Density (PSD)')
     ax.set_title('Radial Power Spectral Density Profile')
