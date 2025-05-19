@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+
 import research_utilities.common as _common
 import research_utilities.demo_imgs as _demo_imgs
 import research_utilities.signal as _signal

@@ -18,7 +18,7 @@ def test_fft_2d(test_image: str, logger: logging.Logger) -> None:
     img = cv2.imread(test_image, cv2.IMREAD_GRAYSCALE)
     logger.debug(f'img.shape: {img.shape}')
 
-    _signal.fft_2d(img, 'fft.png')
+    _signal.fft_2d(img)
 
 
 def _interp_test_impl(

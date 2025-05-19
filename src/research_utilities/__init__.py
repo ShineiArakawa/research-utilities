@@ -52,8 +52,8 @@ from .demo_imgs import get_checkerboard_image, get_demo_image
 from .multi_processing import launch_multi_process
 from .plotting import add_title
 from .resampling import InterpMethod, resample
-from .signal import (calc_radial_psd_profile, compute_radial_psd, fft_1d,
-                     fft_2d, plot_signal, radial_freq)
+from .signal import (calc_radial_psd_profile, compute_psd, compute_radial_psd,
+                     fft_1d, plot_signal, plot_spectrum_2d, radial_freq)
 
 __all__ = [
     "__version__",
@@ -66,9 +66,10 @@ __all__ = [
     "InterpMethod",
     "resample",
     "calc_radial_psd_profile",
+    "compute_psd",
     "compute_radial_psd",
     "fft_1d",
-    "fft_2d",
     "plot_signal",
+    "plot_spectrum_2d",
     "radial_freq",
 ]

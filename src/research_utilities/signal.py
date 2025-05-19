@@ -282,21 +282,21 @@ def _fft_2d_torch(
     return fft_img, mag_power_spectrum
 
 
-def fft_2d(
+def plot_spectrum_2d(
     img: np.ndarray,
-    file_path: str | None = None,
+    file_path: str,
     color_map_type: str = 'viridis',
     is_density: bool = True,
     is_db_scale: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Compute the 2D Fast Fourier Transform of an image.
+    Compute the 2D FFT of an image and plot the power spectrum.
 
     Parameters
     ----------
     img : np.ndarray
         The input image (shape: [height, width]).
-    file_path : str, optional
+    file_path : str
         The file path to save the plot.
     color_map_type : str, optional
         The color map to be applied to the plot.
@@ -308,34 +308,134 @@ def fft_2d(
     """
 
     assert img.ndim >= 2
-    assert file_path is None or (img.ndim == 2 or (img.ndim == 3 and img.shape[0] == 1))
+    assert img.ndim == 2 or (img.ndim == 3 and img.shape[0] == 1)
 
     # Compute the 2D FFT
     fft_img, spectrum = _fft_2d_np(img, is_density, is_db_scale)
 
     spectrum = spectrum.astype(np.float32)
 
-    if file_path is not None:
-        path = pathlib.Path(file_path).resolve()
-        path.parent.mkdir(parents=True, exist_ok=True)
+    path = pathlib.Path(file_path).resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
 
-        img = _cmap.apply_color_map(
-            img=spectrum,
-            color_map_type=color_map_type
-        )  # img is returned in BGR format and float32 dtype
+    img = _cmap.apply_color_map(
+        img=spectrum,
+        color_map_type=color_map_type
+    )  # img is returned in BGR format and float32 dtype
 
-        # To [0, 1]
-        min_val = img.min()
-        max_val = img.max()
+    # To [0, 1]
+    min_val = img.min()
+    max_val = img.max()
 
-        img = (img - min_val) / (max_val - min_val)
+    img = (img - min_val) / (max_val - min_val)
 
-        # To [0, 255] and uint8
-        img = (img * 255).astype(np.uint8)
+    # To [0, 255] and uint8
+    img = (img * 255).astype(np.uint8)
 
-        cv2.imwrite(file_path, img)
+    cv2.imwrite(file_path, img)
 
     return fft_img, spectrum
+
+
+def compute_psd(
+    img: ArrayLike,
+    is_db_scale: bool = False,
+    beta: float | None = None,
+    interpolation: int = 4,
+) -> ArrayLike:
+    """
+    Compute the power spectral density of an image.
+
+    Parameters
+    ----------
+    img : ArrayLike (np.ndarray or torch.Tensor)
+        Input image to be processed.
+        The input image can have 2, 3, or 4 dimensions.
+        - 2D image: [height, width]
+        - 3D image: [channels, height, width]
+        - 4D image: [batch, channels, height, width]
+    is_db_scale : bool, optional
+        Whether to convert the power spectral density to dB scale, by default False
+    beta : float, optional
+        The beta parameter for the Kaiser window. If None, no windowing is applied.
+    interpolation : int, optional
+        The interpolation factor for the windowing, by default 4
+        This is only used when `beta` is specified.
+        The input image will be padded to `interpolation * img.shape[-2:]` before applying the FFT.
+
+    Returns
+    -------
+    ArrayLike (np.ndarray or torch.Tensor)
+        The power spectral density of the image. The output image will have the shape `[batch, channel, height, width]`.
+        If `is_db_scale` is True, the output will be in dB scale.
+    """
+
+    # ----------------------------------------------------------------------------------------------------
+    # If the input is a numpy array, convert it to a torch tensor
+    is_np = isinstance(img, np.ndarray)
+    if is_np:
+        # Convert to torch.Tensor
+        img = torch.from_numpy(img).float()
+
+    # Check the input
+    if img.ndim == 2:
+        # Add the batch and channel dimensions
+        img = img.unsqueeze(0).unsqueeze(0)
+    elif img.ndim == 3:
+        # Add the batch dimension
+        img = img.unsqueeze(0)
+    elif img.ndim != 4:
+        raise ValueError(f'Input image must have 2, 3, or 4 dimensions, but got {img.ndim}.')
+
+    img_h, img_w = img.shape[-2:]
+
+    # ----------------------------------------------------------------------------------------------------
+    # Windowing
+
+    if beta is not None and beta >= 0.0:
+        assert interpolation > 1, 'Interpolation must be greater than 1 when beta is specified.'
+
+        # Prepare kaiser window
+        short_side = max(img_h, img_w)
+
+        window = torch.kaiser_window(short_side, periodic=False, beta=beta, device=img.device, dtype=img.dtype)
+        window *= window.square().sum().rsqrt()
+        window = window.ger(window)  # [short_side, short_side]
+        window = window.unsqueeze(0).unsqueeze(0)  # [1, 1, short_side, short_side]
+
+        if short_side != img_h or short_side != img_w:
+            padding_h = (short_side - img_h) // 2
+            padding_w = (short_side - img_w) // 2
+            window = torch.nn.functional.pad(window, (padding_w, padding_w, padding_h, padding_h))  # [left, right, top, bottom]
+
+        assert window.shape[-2] == img_h
+        assert window.shape[-1] == img_w
+
+        # Apply window
+        padding_h = (img_h * interpolation - img_h)
+        padding_w = (img_w * interpolation - img_w)
+
+        img = torch.nn.functional.pad(img * window, (0, padding_w, 0, padding_h))
+
+    # ----------------------------------------------------------------------------------------------------
+    # Apply FFT
+
+    spectrum = torch.fft.fftn(img, dim=(-2, -1)).abs().square()  # [batch, channel, height, width]
+    spectrum = torch.fft.fftshift(spectrum, dim=(-2, -1))  # Shift the zero frequency component to the center
+
+    spectrum = spectrum / (img.shape[-2] * img.shape[-1])  # Normalize
+
+    if is_db_scale:
+        spectrum = 20.0 * torch.log10(spectrum + 1e-10)
+
+    # ----------------------------------------------------------------------------------------------------
+    # Convert back to numpy array if the input was a numpy array
+    if is_np:
+        # Convert back to numpy array
+        spectrum = spectrum.cpu().numpy()
+
+    # ----------------------------------------------------------------------------------------------------
+    return spectrum
 
 
 def _calc_radial_psd_profile_impl(
@@ -492,8 +592,8 @@ def compute_radial_psd(
         raise ValueError(f'Input image must have 2, 3, or 4 dimensions, but got {img.ndim}.')
 
     # ----------------------------------------------------------------------------------------------------
-    # Apply FFT
-    _, psd = _fft_2d_torch(img, is_density=True, is_db_scale=False)  # [batch, channel, height, width]
+    # Execute FFT with Kaiser windowing
+    psd = compute_psd(img, is_db_scale=False, beta=8.0, interpolation=4)
 
     # ----------------------------------------------------------------------------------------------------
     # Compute the radial power spectral density
