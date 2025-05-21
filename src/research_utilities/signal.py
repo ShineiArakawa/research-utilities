@@ -341,7 +341,7 @@ def compute_psd(
     img: ArrayLike,
     is_db_scale: bool = False,
     beta: float | None = None,
-    interpolation: int = 4,
+    padding_factor: int = 1,
 ) -> ArrayLike:
     """
     Compute the power spectral density of an image.
@@ -358,24 +358,25 @@ def compute_psd(
         Whether to convert the power spectral density to dB scale, by default False
     beta : float, optional
         The beta parameter for the Kaiser window. If None, no windowing is applied.
-    interpolation : int, optional
-        The interpolation factor for the windowing, by default 4
-        This is only used when `beta` is specified.
-        The input image will be padded to `interpolation * img.shape[-2:]` before applying the FFT.
+    padding_factor : int, optional
+        The padding_factor factor for the windowing, by default 4
+        The input image will be padded to `padding_factor * img.shape[-2:]` before applying the FFT.
+        If `padding_factor <= 1`, no padding is applied.
 
     Returns
     -------
     ArrayLike (np.ndarray or torch.Tensor)
-        The power spectral density of the image. The output image will have the shape `[batch, channel, height, width]`.
-        If `is_db_scale` is True, the output will be in dB scale.
+        The power spectral density of the image. The output image will have the shape `[batch, channel, padding_factor * height, padding_factor * width]`.
     """
 
     # ----------------------------------------------------------------------------------------------------
     # If the input is a numpy array, convert it to a torch tensor
     is_np = isinstance(img, np.ndarray)
     if is_np:
+        assert img.dtype in [np.float16, np.float32, np.float64], 'The input image must be a float type numpy array.'
+
         # Convert to torch.Tensor
-        img = torch.from_numpy(img).float()
+        img = torch.from_numpy(img)
 
     # Check the input
     if img.ndim == 2:
@@ -393,7 +394,7 @@ def compute_psd(
     # Windowing
 
     if beta is not None and beta >= 0.0:
-        assert interpolation > 1, 'Interpolation must be greater than 1 when beta is specified.'
+        assert padding_factor > 1, 'Interpolation must be greater than 1 when beta is specified.'
 
         # Prepare kaiser window
         short_side = max(img_h, img_w)
@@ -406,16 +407,25 @@ def compute_psd(
         if short_side != img_h or short_side != img_w:
             padding_h = (short_side - img_h) // 2
             padding_w = (short_side - img_w) // 2
-            window = torch.nn.functional.pad(window, (padding_w, padding_w, padding_h, padding_h))  # [left, right, top, bottom]
+            window = torch.nn.functional.pad(
+                window,
+                (padding_w, padding_w, padding_h, padding_h)  # [left, right, top, bottom]
+            )
 
         assert window.shape[-2] == img_h
         assert window.shape[-1] == img_w
 
         # Apply window
-        padding_h = (img_h * interpolation - img_h)
-        padding_w = (img_w * interpolation - img_w)
+        img = img * window
 
-        img = torch.nn.functional.pad(img * window, (0, padding_w, 0, padding_h))
+    # ----------------------------------------------------------------------------------------------------
+    # Padding
+
+    if padding_factor > 1:
+        padding_h = (img_h * padding_factor - img_h)
+        padding_w = (img_w * padding_factor - img_w)
+
+        img = torch.nn.functional.pad(img, (0, padding_w, 0, padding_h))
 
     # ----------------------------------------------------------------------------------------------------
     # Apply FFT
@@ -426,7 +436,7 @@ def compute_psd(
     spectrum = spectrum / (img.shape[-2] * img.shape[-1])  # Normalize
 
     if is_db_scale:
-        spectrum = 20.0 * torch.log10(spectrum + 1e-10)
+        spectrum = 10.0 * torch.log10(spectrum + 1e-10)
 
     # ----------------------------------------------------------------------------------------------------
     # Convert back to numpy array if the input was a numpy array
@@ -593,7 +603,7 @@ def compute_radial_psd(
 
     # ----------------------------------------------------------------------------------------------------
     # Execute FFT with Kaiser windowing
-    psd = compute_psd(img, is_db_scale=False, beta=8.0, interpolation=4)
+    psd = compute_psd(img, is_db_scale=False, beta=8.0, padding_factor=4)
 
     # ----------------------------------------------------------------------------------------------------
     # Compute the radial power spectral density

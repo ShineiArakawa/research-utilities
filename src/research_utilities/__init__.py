@@ -54,6 +54,7 @@ from .plotting import add_title
 from .resampling import InterpMethod, resample
 from .signal import (calc_radial_psd_profile, compute_psd, compute_radial_psd,
                      fft_1d, plot_signal, plot_spectrum_2d, radial_freq)
+from .video import save_images_to_video
 
 __all__ = [
     "__version__",
@@ -72,4 +73,5 @@ __all__ = [
     "plot_signal",
     "plot_spectrum_2d",
     "radial_freq",
+    "save_images_to_video",
 ]

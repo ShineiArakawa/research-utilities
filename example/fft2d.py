@@ -36,7 +36,7 @@ def main():
     # ------------------------------------------------------------
     # Create a 2D FFT of the image
 
-    psd = rutils.compute_psd(img, is_db_scale=True, beta=8.0, interpolation=4)
+    psd = rutils.compute_psd(img, is_db_scale=True, beta=8.0, padding_factor=4)
     psd = psd.squeeze(0).squeeze(0)
 
     freqs = np.fft.fftfreq(img_size)

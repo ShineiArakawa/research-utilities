@@ -1,3 +1,6 @@
+"""Video processing utilities.
+"""
+
 import pathlib
 import typing
 
@@ -26,32 +29,32 @@ def save_images_to_video(
 
     Parameters
     ----------
-    images : list[np.ndarray  |  torch.Tensor] | torch.Tensor
+    images: list[np.ndarray | torch.Tensor] | torch.Tensor
         Images to save. If a list, each image must be a numpy array or torch tensor.
         If a numpy array or torch tensor, it must be 4D array/tensor.
-        The pixel values must be in the range [0, 1].
-    video_path : str | pathlib.Path
+        The pixel values must be in the range[0, 1].
+    video_path: str | pathlib.Path
         Path to save the video.
-    fps : int | None, optional
+    fps: int | None, optional
         Frames per second, by default 24
         If None, duration must be provided.
-    duration : float | None, optional
+    duration: float | None, optional
         Duration of the video in seconds, by default None
         If None, fps must be provided.
-    hevc : bool, optional
-        Use High Efficiency Video Coding (HEVC) (H.265) instead of H.264, by default False
-    bitrate : str, optional
+    hevc: bool, optional
+        Use High Efficiency Video Coding(HEVC)(H.265) instead of H.264, by default False
+    bitrate: str, optional
         Bitrate of the video, by default '40M'
-    verbose : bool, optional
+    verbose: bool, optional
         If True, print progress, by default False
-    img_size : typing.Tuple[int, int] | None, optional
+    img_size: typing.Tuple[int, int] | None, optional
         Size of the image, by default None
         If None, the size of the first image will be used.
-    interp : int, optional
+    interp: int, optional
         Interpolation method, by default cv2.INTER_NEAREST
         See 'https://docs.opencv.org/4.10.0/da/d54/group__imgproc__transform.html' for more details.
-    channel_last : bool, optional
-        Whether the image is in channel last format (HWC) or channel first format (CHW), by default False
+    channel_last: bool, optional
+        Whether the image is in channel last format(HWC) or channel first format(CHW), by default False
     """
 
     assert len(images) > 0, 'No images to save.'

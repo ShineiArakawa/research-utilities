@@ -22,7 +22,7 @@ def main():
     print(f'img.shape: {img.shape}, (min, max): ({img.min()}, {img.max()})')
 
     # Compute power spectral density (PSD)
-    psd = _rutils.compute_psd(img, beta=8.0, interpolation=4)
+    psd = _rutils.compute_psd(img, beta=8.0, padding_factor=4)
     psd = psd.mean(dim=(0, 1))
     psd = 20.0 * torch.log10(psd + 1e-10)  # Convert to dB
     print(f'psd.shape: {psd.shape}, (min, max): ({psd.min()}, {psd.max()})')
