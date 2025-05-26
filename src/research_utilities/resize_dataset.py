@@ -50,7 +50,7 @@ def resize_impl(
 
     # Save the resized image to the output directory
     save_path.parent.mkdir(parents=True, exist_ok=True)
-    image.save(save_path)
+    image.save(save_path, quality=95)
 
 
 def parse_args() -> argparse.Namespace:
